@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Shortener</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 800px; /* Set a max-width for larger screens */
+            box-sizing: border-box; /* Include padding and border in the element's total width and height */
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        .input-group {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .input-group input[type="url"] {
+            flex: 1; /* Take up available space */
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        .input-group button {
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: #fff;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .input-group button:hover {
+            background-color: #0056b3;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            table-layout: auto; /* Ensure table adjusts to content size */
+        }
+
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            overflow-wrap: break-word; /* Ensure long text wraps to avoid overflow */
+        }
+
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        .error {
+            color: red;
+            margin-top: 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body onload="loadURLs()">
+    <div class="container">
+        <h1>URL Shortener</h1>
+        <div class="input-group">
+            <input type="url" id="urlInput" placeholder="Enter your URL here..." required>
+            <button onclick="shortenURL()">Shorten</button>
+        </div>
+        <div id="error" class="error"></div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Long URL</th>
+                    <th>Shortened URL</th>
+                </tr>
+            </thead>
+            <tbody id="urlTable">
+                <!-- Dynamically populated rows will go here -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        async function loadURLs() {
+            try {
+                const response = await fetch('http://localhost:8080/url');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch URLs');
+                }
+
+                const urls = await response.json();
+                const urlTable = document.getElementById('urlTable');
+
+                urls.forEach(url => {
+                    const row = urlTable.insertRow();
+                    row.insertCell(0).textContent = url.longurl;
+                    row.insertCell(1).innerHTML = `<a href="http://localhost:8080/${url.shorturlid}" target="_blank">http://localhost:8080/${url.shorturlid}</a>`;
+                });
+
+            } catch (error) {
+                const errorDiv = document.getElementById('error');
+                errorDiv.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        async function shortenURL() {
+            const urlInput = document.getElementById('urlInput').value;
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = ''; // Clear any previous errors
+
+            if (!urlInput) {
+                errorDiv.textContent = 'Please enter a valid URL.';
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:8080/url', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ longurl: urlInput })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                // Add the new shortened URL to the table
+                const urlTable = document.getElementById('urlTable');
+                const row = urlTable.insertRow();
+                row.insertCell(0).textContent = urlInput;
+                row.insertCell(1).innerHTML = `<a href="http://localhost:8080/${data.shorturlid}" target="_blank">http://localhost:8080/${data.shorturlid}</a>`;
+                document.getElementById('urlInput').value = ''; // Clear input field
+
+            } catch (error) {
+                errorDiv.textContent = `Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
